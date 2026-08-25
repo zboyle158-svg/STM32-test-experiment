@@ -1,0 +1,5 @@
+*** Using Compiler 'V5.06 update 6 (build 750)', folder: 'I:\keil11\ARM\ARMCC\Bin'
+Build target 'OV_Watch'
+After Build - User command #1: fromelf.exe --bin -o "j:\github\STM32-test-experiment\OV-Watch\Software\OV_Watch\MDK-ARM\output\OV_Watch.bin" "j:\github\STM32-test-experiment\OV-Watch\Software\OV_Watch\MDK-ARM\output\OV_Watch.axf
+".\output\OV_Watch.axf" - 0 Error(s), 0 Warning(s).
+Build Time Elapsed:  00:00:04
