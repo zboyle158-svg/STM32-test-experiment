@@ -1,15 +1,17 @@
 ;*******************************************************************************
 ;* File Name          : startup_stm32f411xe.s
 ;* Author             : MCD Application Team
-;* Description        : STM32F411xExx devices vector table for MDK-ARM toolchain. 
-;*                      This module performs:
-;*                      - Set the initial SP
-;*                      - Set the initial PC == Reset_Handler
-;*                      - Set the vector table entries with the exceptions ISR address
-;*                      - Branches to __main in the C library (which eventually
-;*                        calls main()).
-;*                      After Reset the CortexM4 processor is in Thread mode,
-;*                      priority is Privileged, and the Stack is set to Main.
+;* Description        : STM32F411xExx 的启动文件，适用于 Keil MDK-ARM。
+;*                      该文件不是普通的应用逻辑，而是处理器复位后最早执行的
+;*                      启动代码，主要负责：
+;*                      - 为 MSP 提供初始栈顶地址；
+;*                      - 建立异常和外部中断向量表；
+;*                      - 从 Reset_Handler 进入 C 运行库 __main；
+;*                      - 为未被用户工程实现的中断提供默认死循环；
+;*                      - 向 C 运行库提供栈和堆的边界信息。
+;*
+;*                      Cortex-M4 复位后处于 Thread mode、特权级，使用主栈
+;*                      MSP。向量表第 0 项由硬件装入 MSP，第 1 项作为复位入口。
 ;*******************************************************************************
 ;* @attention
 ;*
@@ -23,8 +25,9 @@
 ;*******************************************************************************
 ;* <<< Use Configuration Wizard in Context Menu >>>
 ;
-; Amount of memory (in bytes) allocated for Stack
-; Tailor this value to your application needs
+; 栈区大小，单位为字节。栈通常用于保存函数调用现场、局部变量、返回地址以及
+; 中断现场。栈从高地址向低地址增长，因此 __initial_sp 位于 Stack_Mem 区域的
+; 末端。栈不足会造成内存覆盖，表现为不可预测的 HardFault 或程序跑飞。
 ; <h> Stack Configuration
 ;   <o> Stack Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ; </h>
@@ -33,10 +36,11 @@ Stack_Size		EQU     0x400
 
                 AREA    STACK, NOINIT, READWRITE, ALIGN=3
 Stack_Mem       SPACE   Stack_Size
-__initial_sp
+__initial_sp             ; 初始 MSP：向量表第 0 项必须指向栈顶，而不是栈底。
 
 
-; <h> Heap Configuration
+; 堆区大小，单位为字节。非 MicroLIB 配置下，C 运行库可通过这里返回的边界
+; 管理 malloc/free 等动态内存；MicroLIB 配置下则直接导出堆边界符号。
 ;   <o>  Heap Size (in Bytes) <0x0-0xFFFFFFFF:8>
 ; </h>
 
@@ -45,19 +49,24 @@ Heap_Size      EQU     0x200
                 AREA    HEAP, NOINIT, READWRITE, ALIGN=3
 __heap_base
 Heap_Mem        SPACE   Heap_Size
-__heap_limit
+__heap_limit             ; 堆区结束地址，供 C 运行库判断可用范围。
 
                 PRESERVE8
                 THUMB
 
 
-; Vector Table Mapped to Address 0 at Reset
+; 向量表：每个 DCD 占 4 字节，表项内容是异常/中断处理函数地址。
+; Cortex-M4 复位时从当前向量表读取：
+;   [0] -> MSP 初值
+;   [1] -> Reset_Handler 地址
+; 随后的表项按 ARM Cortex-M 异常编号排列。若未重新设置 SCB->VTOR，
+; 处理器默认从地址 0 取表；本工程的 IAP 启动映像通常位于 Flash 起始处。
                 AREA    RESET, DATA, READONLY
                 EXPORT  __Vectors
                 EXPORT  __Vectors_End
                 EXPORT  __Vectors_Size
 
-__Vectors       DCD     __initial_sp               ; Top of Stack
+__Vectors       DCD     __initial_sp               ; [0] 初始 MSP，硬件复位时自动装入。
                 DCD     Reset_Handler              ; Reset Handler
                 DCD     NMI_Handler                ; NMI Handler
                 DCD     HardFault_Handler          ; Hard Fault Handler
@@ -74,7 +83,8 @@ __Vectors       DCD     __initial_sp               ; Top of Stack
                 DCD     PendSV_Handler             ; PendSV Handler
                 DCD     SysTick_Handler            ; SysTick Handler
 
-                ; External Interrupts
+                ; 外部中断表从异常号 16 开始。表项顺序必须与芯片参考手册完全一致；
+                ; 不能按工程文件出现顺序调整，否则一个外设中断会跳到错误的处理函数。
                 DCD     WWDG_IRQHandler                   ; Window WatchDog                                        
                 DCD     PVD_IRQHandler                    ; PVD through EXTI Line detection                        
                 DCD     TAMP_STAMP_IRQHandler             ; Tamper and TimeStamps through the EXTI line            
@@ -168,7 +178,14 @@ __Vectors_Size  EQU  __Vectors_End - __Vectors
 
                 AREA    |.text|, CODE, READONLY
 
-; Reset handler
+; 复位入口。该函数由向量表第 1 项提供给 Cortex-M4。
+; 执行顺序：
+;   ① LDR R0, =SystemInit：取得系统初始化函数地址；
+;   ② BLX R0：调用 CMSIS/SystemInit，完成底层时钟、FPU 等早期配置；
+;   ③ LDR R0, =__main：取得 ARM C 运行库入口地址；
+;   ④ BX R0：跳转到 C 运行库，由运行库完成数据段搬运、清零 BSS、
+;      堆栈环境准备，最终调用用户的 main()。
+; 这里没有直接调用 main()，因为 C 全局变量初始化等工作必须先由 __main 完成。
 Reset_Handler    PROC
                  EXPORT  Reset_Handler             [WEAK]
         IMPORT  SystemInit
@@ -180,7 +197,10 @@ Reset_Handler    PROC
                  BX      R0
                  ENDP
 
-; Dummy Exception Handlers (infinite loops which can be modified)
+; 默认异常处理函数。
+; 这些函数以 [WEAK] 导出：如果其他 C 文件提供同名的强符号实现，链接器会优先
+; 使用用户实现；如果没有实现，则向量表仍能解析到这里，并在 B . 处永久停留。
+; 永久停留便于调试器捕获异常，避免错误处理函数返回后继续执行未知地址。
 
 NMI_Handler     PROC
                 EXPORT  NMI_Handler                [WEAK]
@@ -224,6 +244,8 @@ SysTick_Handler PROC
                 B       .
                 ENDP
 
+; 外部中断的弱符号声明。下面的 EXPORT 只声明符号可被链接器看到，真正的默认
+; 函数体由同一 PROC 中的同名标签共享；因此未实现的 IRQ 会统一进入 B .。
 Default_Handler PROC
 
                 EXPORT  WWDG_IRQHandler                   [WEAK]                                        
@@ -342,6 +364,7 @@ FPU_IRQHandler
 SPI4_IRQHandler
 SPI5_IRQHandler
 
+                ; 所有未被用户覆盖的外部 IRQ 都汇聚到这里，进入不可返回的故障现场。
                 B       .
 
                 ENDP
@@ -349,8 +372,17 @@ SPI5_IRQHandler
                 ALIGN
 
 ;*******************************************************************************
-; User Stack and Heap initialization
+; 用户栈和堆初始化接口
 ;*******************************************************************************
+; ARM C 运行库根据工程是否启用 MicroLIB 选择不同接口：
+; - MicroLIB：直接使用 __initial_sp、__heap_base、__heap_limit；
+; - 标准库：调用 __user_initial_stackheap，按 R0~R3 返回四个边界。
+; 返回约定（非 MicroLIB）：
+;   R0 = Heap_Mem                  堆起始地址
+;   R1 = Stack_Mem + Stack_Size    栈顶地址
+;   R2 = Heap_Mem + Heap_Size      堆结束地址
+;   R3 = Stack_Mem                 栈底地址
+; 这些地址由链接器符号解析，不能把它们误解为实际的 C 变量内容。
                  IF      :DEF:__MICROLIB
                 
                  EXPORT  __initial_sp
@@ -364,11 +396,11 @@ SPI5_IRQHandler
                  
 __user_initial_stackheap
 
-                 LDR     R0, =  Heap_Mem
-                 LDR     R1, =(Stack_Mem + Stack_Size)
-                 LDR     R2, = (Heap_Mem +  Heap_Size)
-                 LDR     R3, = Stack_Mem
-                 BX      LR
+                 LDR     R0, =  Heap_Mem              ; 返回堆起始地址。
+                 LDR     R1, =(Stack_Mem + Stack_Size) ; 返回栈顶，即初始 MSP。
+                 LDR     R2, = (Heap_Mem +  Heap_Size) ; 返回堆结束地址。
+                 LDR     R3, = Stack_Mem              ; 返回栈底地址。
+                 BX      LR                           ; 返回 C 运行库调用点。
 
                  ALIGN
 

@@ -42,6 +42,7 @@ static uint32_t GetSector(uint32_t Address);
   */
 void FLASH_If_Init(void)
 {
+   /* 解锁后才能执行擦除/编程；清除历史错误标志，避免误判本次操作。 */
    HAL_FLASH_Unlock();
 
   /* Clear pending flags (if any) */
@@ -63,7 +64,7 @@ uint32_t FLASH_If_Erase(uint32_t StartSector)
 
     /* Unlock the Flash to enable the flash control register access *************/
 
-    /* Get the sector where start the user flash area */
+    /* 根据 APP 起始地址计算首个扇区，擦除覆盖用户区的全部扇区。 */
     UserStartSector = GetSector(APPLICATION_ADDRESS);
 
     pEraseInit.TypeErase = TYPEERASE_SECTORS;
@@ -91,6 +92,7 @@ uint32_t FLASH_If_Erase_One_Sector(uint32_t StartSector)
     uint32_t SectorError;
     FLASH_EraseInitTypeDef pEraseInit;
 
+    /* 单独清除 APP FLAG 所在扇区，不触碰其余 APP 数据。 */
     pEraseInit.TypeErase = TYPEERASE_SECTORS;
     pEraseInit.Sector = StartSector;
     pEraseInit.NbSectors = 1 ;
@@ -119,6 +121,7 @@ uint32_t FLASH_If_Write(__IO uint32_t* FlashAddress, uint32_t* Data ,uint32_t Da
 {
   uint32_t i = 0;
 
+  /* STM32F4 按 WORD 编程；DataLength 的单位是 32 位字，不是字节。 */
   for (i = 0; (i < DataLength) && (*FlashAddress <= (USER_FLASH_END_ADDRESS-4)); i++)
   {
     /* Device voltage range supposed to be [2.7V to 3.6V], the operation will

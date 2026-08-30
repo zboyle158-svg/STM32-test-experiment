@@ -42,13 +42,19 @@
 //#define ADDR_FLASH_SECTOR_10    ((uint32_t)0x080C0000) /* Base @ of Sector 10, 128 Kbyte */
 //#define ADDR_FLASH_SECTOR_11    ((uint32_t)0x080E0000) /* Base @ of Sector 11, 128 Kbyte */
 
-/* End of the Flash address */
+/**
+ * @brief  APP 可使用的 Flash 末地址。
+ * @note   APP 的最终可用范围还受芯片实际容量和链接脚本约束。
+ */
 #define USER_FLASH_END_ADDRESS        0x0807FFFF
 /* Define the user application size */
 #define USER_FLASH_SIZE   (USER_FLASH_END_ADDRESS - APPLICATION_ADDRESS + 1)
 
-/* Define the address from where user application will be loaded.
-   Note: the 1st sector 0x08000000-0x08003FFF is reserved for the IAP code */
+/**
+ * @brief  APP 镜像写入起始地址。
+ * @details 偏移 0 是 APP 的初始 MSP，偏移 4 是 Reset_Handler 地址；
+ *          IAP 跳转地址与 APP 链接地址必须保持一致。
+ */
 #define APPLICATION_ADDRESS   (uint32_t)0x0800C000
 
 /* Exported macro ------------------------------------------------------------*/

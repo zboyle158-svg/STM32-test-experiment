@@ -42,6 +42,12 @@
 pFunction Jump_To_Application;
 uint32_t JumpAddress;
 __IO uint32_t FlashProtection = 0;
+/**
+ * @brief  Ymodem 接收缓冲区。
+ * @details
+ * 接收函数先把一个 1 KB 数据包放入 RAM，再按 32 位字写入 APP 区域。
+ * 该数组必须足够大，且不能在写 Flash 期间被覆盖。
+ */
 uint8_t tab_1024[1024] =
   {
     0
@@ -64,8 +70,14 @@ void SerialDownload(void)
   uint8_t Number[10] = "          ";
   int32_t Size = 0;
 
-  // user operation
-  // clear the flag in flash in 0x08008000
+  /**
+   * @brief  下载流程的提交点。
+   * @details
+   * 先擦除 Sector 2 的 APP 标志，再由 Ymodem_Receive() 擦除并写入 APP。
+   * 只有整个文件接收成功后才写入 "APP FLAG"，因此掉电中断不会把半成品
+   * 当作可启动 APP（但当前实现没有 CRC/镜像完整性二次校验）。
+   */
+  /* 擦除旧标志，使启动代码暂时不会跳转到旧 APP。 */
   uint32_t flashdestination = ADDR_FLASH_SECTOR_2;
   // sector 2
   FLASH_If_Erase_One_Sector(2U);
@@ -83,8 +95,7 @@ void SerialDownload(void)
     SerialPutString(" Bytes\r\n");
     SerialPutString("-------------------\n");
 
-    // user operation
-    // set the flag in flash in 0x08008000
+    /* 文件成功写入后再设置标志，标志地址就是 Sector 2 起始地址。 */
     const char *str_flag = "APP FLAG";
     uint32_t * APP_FLAG = (uint32_t *)str_flag;
 
@@ -127,6 +138,7 @@ void SerialUpload(void)
 {
   uint8_t status = 0 ;
 
+  /* 上载端等待主机发送 CRC16 请求字符 'C'。该菜单项目前在 Main_Menu 中禁用。 */
   SerialPutString("\n\n\rSelect Receive File\n\r");
 
   if (GetKey() == CRC16)
@@ -173,6 +185,7 @@ void Main_Menu(void)
     FlashProtection = 0;
   }
 
+  /* 菜单是阻塞式状态机：每次处理一个按键，下载/上载完成后回到菜单。 */
   while (1)
   {
     SerialPutString("\r\n================== Main Menu ============================\r\n\n");
@@ -203,17 +216,20 @@ void Main_Menu(void)
     }
     else if (key == 0x33) /* execute the new program */
     {
-      //user code here
+      /*
+       * 跳转约定与 main() 中一致：关闭 IAP 的系统节拍和中断，读取 APP
+       * 向量表，再设置 MSP 并调用复位入口。APP 必须按 0x0800C000 链接。
+       */
       SysTick->CTRL = 0X00;//禁止SysTick
       SysTick->LOAD = 0;
       SysTick->VAL = 0;
       __disable_irq();
 
-      //set JumpAddress
+      /* 向量表第 1 项是 Reset_Handler 地址。 */
       JumpAddress = *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);
       /* Jump to user application */
       Jump_To_Application = (pFunction) JumpAddress;
-      /* Initialize user application's Stack Pointer */
+      /* 向量表第 0 项是 APP 的初始主堆栈指针。 */
       __set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);
       Jump_To_Application();
     }

@@ -48,6 +48,7 @@ extern uint8_t FileName[];
   */
 static  int32_t Receive_Byte (uint8_t *c, uint32_t timeout)
 {
+  /* timeout 是轮询次数，不是严格的毫秒数；实际时长取决于 CPU 主频。 */
   while (timeout-- > 0)
   {
     if (SerialKeyPressed(c) == 1)
@@ -90,6 +91,7 @@ static int32_t Receive_Packet (uint8_t *data, int32_t *length, uint32_t timeout)
   {
     return -1;
   }
+  /* SOH 表示 128 字节块，STX 表示 1 KB 块；其后还包含序号和 CRC。 */
   switch (c)
   {
     case SOH:
@@ -124,6 +126,7 @@ static int32_t Receive_Packet (uint8_t *data, int32_t *length, uint32_t timeout)
       return -1;
     }
   }
+  /* 包序号与其按位取反值必须匹配，用于快速发现帧错位。 */
   if (data[PACKET_SEQNO_INDEX] != ((data[PACKET_SEQNO_COMP_INDEX] ^ 0xff) & 0xff))
   {
     return -1;
@@ -143,7 +146,13 @@ int32_t Ymodem_Receive (uint8_t *buf)
   int32_t i, packet_length, session_done, file_done, packets_received, errors, session_begin, size = 0;
   uint32_t flashdestination, ramsource;
 
-  /* Initialize flashdestination variable */
+  /**
+   * @brief  接收一个 Ymodem 文件并写入 APP Flash。
+   * @details
+   * 第 0 包只携带文件名和文件大小；后续包进入 RAM 缓冲区，再以 32 位
+   * 字写入 Flash。EOT 后发送 ACK；空文件名包表示整个会话结束。
+   */
+  /* 写入地址从 APP 起始地址开始递增。 */
   flashdestination = APPLICATION_ADDRESS;
 
   for (session_done = 0, errors = 0, session_begin = 0; ;)
@@ -191,7 +200,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
                     file_size[i++] = '\0';
                     Str2Int(file_size, &size);
 
-                    /* Test the size of the image to be sent */
+                    /* 先检查文件大小，防止镜像越过 USER_FLASH_END_ADDRESS。 */
                     /* Image size is greater than Flash size */
                     if (size > (USER_FLASH_SIZE + 1))
                     {
@@ -200,7 +209,7 @@ int32_t Ymodem_Receive (uint8_t *buf)
                       Send_Byte(CA);
                       return -1;
                     }
-                    /* erase user application area */
+                    /* 收到合法文件头后再擦除 APP 区，避免无效请求破坏旧镜像。 */
                     FLASH_If_Erase(APPLICATION_ADDRESS);
                     Send_Byte(ACK);
                     Send_Byte(CRC16);
@@ -217,10 +226,11 @@ int32_t Ymodem_Receive (uint8_t *buf)
                 /* Data packet */
                 else
                 {
+                  /* 去掉 3 字节头部，仅复制有效负载到 RAM 缓冲区。 */
                   memcpy(buf_ptr, packet_data + PACKET_HEADER, packet_length);
                   ramsource = (uint32_t)buf;
 
-                  /* Write received data in Flash */
+                  /* 每包写入后由 FLASH_If_Write() 回读校验。 */
                   if (FLASH_If_Write(&flashdestination, (uint32_t*) ramsource, (uint16_t) packet_length/4)  == 0)
                   {
                     Send_Byte(ACK);

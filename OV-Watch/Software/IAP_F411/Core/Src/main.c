@@ -58,6 +58,12 @@
 
 uint8_t boot_in_menu_flag = 0;
 
+/**
+ * @brief  应用程序入口函数类型。
+ * @details
+ * 应用程序被链接到 APPLICATION_ADDRESS 后，向量表第 0 项是初始 MSP，
+ * 第 1 项是 Reset_Handler 地址。跳转时读取第 1 项并转换为该函数指针。
+ */
 extern pFunction Jump_To_Application;
 extern uint32_t JumpAddress;
 
@@ -81,6 +87,10 @@ void SystemClock_Config(void);
 int main(void)
 {
   /* USER CODE BEGIN 1 */
+	/*
+	 * IAP 位于 Flash 起始地址，因此启动阶段先使用 IAP 自己的向量表。
+	 * 真正跳转 APP 前还需要关闭 SysTick、中断，并由 APP 重新设置 VTOR。
+	 */
 	SCB->VTOR = FLASH_BASE;
   /* USER CODE END 1 */
 
@@ -108,6 +118,10 @@ int main(void)
   MX_ADC1_Init();
   /* USER CODE BEGIN 2 */
 
+	/*
+	 * 此处完成 IAP 菜单依赖的硬件初始化：按键决定启动路径，串口承载
+	 * Ymodem，LCD 显示状态，电源和蓝牙是本产品板级功能。
+	 */
 	//sys delay
 	delay_init();
 
@@ -130,7 +144,12 @@ int main(void)
 	delay_ms(10);
 	LCD_Set_Light(50);
 
-  //开机启动时如果按下KEY1, 进入boot中IAP升级模式
+  /**
+   * @brief  启动模式选择。
+   * @details
+   * KEY1 低电平有效。500 ms 延时是简单的软件消抖，同时给用户一个
+   * 进入升级模式的确认窗口；确认后 Main_Menu() 不返回，持续等待串口命令。
+   */
   if(HAL_GPIO_ReadPin(KEY1_PORT, KEY1_PIN) == 0)
   {
 		// 延时判断是否真的按下
@@ -149,14 +168,14 @@ int main(void)
     }
   }
 
-  //如果没按下KEY1, 且有APP程序, 则运行APP, 没有APP则
+    /* 未按键时，仅当 APP FLAG 位于预留扇区且内容正确才跳转 APP。 */
   else
   {
     uint32_t data1, data2;
     char *str_flag;
     uint32_t address = 0x08008000; // Flash 中数据的起始地址
 
-    // 读取地址为 0x08008000 的数据
+    /* 读取 APP 标志的前 8 个字节；本工程实际将标志写在 Sector 2 起始处。 */
     data1 = *(uint32_t *)address;
 
     // 读取地址为 0x08008004 的数据
@@ -174,22 +193,25 @@ int main(void)
     strcpy(combined_str, str1);
     strcat(combined_str, str2);
 
-    // 检查是否与 "APP FLAG" 相同
+    /* 通过固定文本判断升级是否曾经成功完成。 */
     if (strcmp(combined_str, "APP FLAG") == 0)
     {
         // 如果相同则跳转
         printf("APP FLAG OK, jump to app\r\n");
-        //user code here
+        /*
+         * 跳转前清理 IAP 的运行环境：停止 SysTick、清零计数器并禁止中断，
+         * 避免 APP 继承 IAP 的节拍或中断状态。
+         */
         SysTick->CTRL = 0X00;//禁止SysTick
         SysTick->LOAD = 0;
         SysTick->VAL = 0;
         __disable_irq();
 
-        //set JumpAddress
+        /* 向量表第 1 项是 APP 的复位入口地址，而不是 APP 起始地址本身。 */
         JumpAddress = *(__IO uint32_t*) (APPLICATION_ADDRESS + 4);
         /* Jump to user application */
         Jump_To_Application = (pFunction) JumpAddress;
-        /* Initialize user application's Stack Pointer */
+        /* 向量表第 0 项是 APP 启动时应使用的主堆栈指针。 */
         __set_MSP(*(__IO uint32_t*) APPLICATION_ADDRESS);
         Jump_To_Application();
     }
