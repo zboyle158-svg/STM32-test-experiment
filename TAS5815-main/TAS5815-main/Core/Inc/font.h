@@ -2,6 +2,10 @@
 #define __FONT_H
 #include "stdint.h"
 #include "string.h"
+/**
+ * @brief ASCII字模表描述。
+ * @details chars指向连续字模数据，每个字符的位图布局由h和w决定。
+ */
 typedef struct ASCIIFont {
   uint8_t h;
   uint8_t w;
@@ -17,6 +21,10 @@ extern const ASCIIFont afont24x12;
  * @brief 字体结构体
  * @note  字库前4字节存储utf8编码 剩余字节存储字模数据
  * @note 字库数据可以使用波特律动LED取模助手生成(https://led.baud-dance.com)
+ */
+/**
+ * @brief UTF-8字符字模表描述。
+ * @details 每个字模记录前面保存UTF-8编码，后面保存位图；ascii用于找不到字符时的回退显示。
  */
 typedef struct Font {
   uint8_t h;              // 字高度
@@ -37,6 +45,12 @@ extern const Font font10x10;
 /**
  * @brief 图片结构体
  * @note  图片数据可以使用波特律动LED取模助手生成(https://led.baud-dance.com)
+ */
+/**
+ * @brief 单色图片描述。
+ * @param w 图片宽度，单位像素。
+ * @param h 图片高度，单位像素。
+ * @param data 图片位图数据，只读存储在Flash中。
  */
 typedef struct Image {
   uint8_t w;           // 图片宽度

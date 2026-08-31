@@ -57,6 +57,7 @@ __heap_limit
                 EXPORT  __Vectors_End
                 EXPORT  __Vectors_Size
 
+; 向量表首项是栈顶，第二项是复位入口；CPU复位后从这里取得初始执行上下文。
 __Vectors       DCD     __initial_sp               ; Top of Stack
                 DCD     Reset_Handler              ; Reset Handler
                 DCD     NMI_Handler                ; NMI Handler
@@ -169,6 +170,7 @@ __Vectors_Size  EQU  __Vectors_End - __Vectors
                 AREA    |.text|, CODE, READONLY
 
 ; Reset handler
+; 复位处理只完成最早期的系统初始化，然后交给C运行库执行全局数据初始化并调用main。
 Reset_Handler    PROC
                  EXPORT  Reset_Handler             [WEAK]
         IMPORT  SystemInit

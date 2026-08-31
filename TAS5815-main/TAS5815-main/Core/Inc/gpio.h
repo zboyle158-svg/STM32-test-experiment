@@ -36,6 +36,7 @@ extern "C" {
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化所有普通GPIO、控制输出和EXTI输入。 */
 void MX_GPIO_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -46,4 +47,3 @@ void MX_GPIO_Init(void);
 }
 #endif
 #endif /*__ GPIO_H__ */
-

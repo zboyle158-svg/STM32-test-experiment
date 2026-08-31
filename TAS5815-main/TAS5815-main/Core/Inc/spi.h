@@ -32,12 +32,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief SPI3句柄，当前工程完成引脚和外设初始化但未见业务发送。 */
 extern SPI_HandleTypeDef hspi3;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化SPI3主机、8位数据和PB3/PB4/PB5复用引脚。 */
 void MX_SPI3_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +51,3 @@ void MX_SPI3_Init(void);
 #endif
 
 #endif /* __SPI_H__ */
-

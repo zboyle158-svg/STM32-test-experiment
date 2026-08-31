@@ -20,6 +20,10 @@
 #define MAIN_MENU_SIZE  7  /* 主菜单项数量 */
 
 /* 菜单状态枚举 */
+/**
+ * @brief 菜单状态。
+ * @note MENU_STATE_VOLUME是默认工作页面，其音量处理由main.c完成；其余状态由menu.c绘制和处理。
+ */
 typedef enum {
     MENU_STATE_VOLUME = 0,    /* 音量调节界面（默认） */
     MENU_STATE_MAIN,          /* 一级菜单 */
@@ -32,6 +36,10 @@ typedef enum {
 } MenuState;
 
 /* 菜单项结构体 */
+/**
+ * @brief 一个菜单项目的静态描述。
+ * @details action是短按后执行的函数指针；subMenu和subMenuSize描述可进入的子菜单。
+ */
 typedef struct MenuItem {
     const char *name;                    /* 菜单项名称 */
     MenuState targetState;               /* 目标状态 */
@@ -41,6 +49,10 @@ typedef struct MenuItem {
 } MenuItem;
 
 /* 菜单系统结构体 */
+/**
+ * @brief 菜单运行时状态。
+ * @note currentMenu指向静态菜单数组，不指向动态分配内存；selectedIndex是当前选中下标。
+ */
 typedef struct {
     MenuState currentState;              /* 当前菜单状态 */
     MenuItem *currentMenu;               /* 当前菜单项数组 */
@@ -51,32 +63,46 @@ typedef struct {
 } MenuSystem;
 
 /* 菜单系统初始化 */
+/** @brief 初始化菜单状态并默认进入音量页面。 */
 void Menu_Init(void);
 
 /* 菜单主处理函数 */
+/**
+ * @brief 在主循环中轮询编码器和按键，并更新菜单界面。
+ * @note 函数可能执行OLED I2C刷新和短时按键动作，不应从中断服务函数调用。
+ */
 void Menu_Process(void);
 
 /* 获取当前菜单状态 */
+/** @brief 返回当前菜单状态。 */
 MenuState Menu_GetState(void);
 
 /* 进入菜单 */
+/** @brief 从音量页面进入一级菜单。 */
 void Menu_Enter(void);
 
 /* 退出菜单返回音量界面 */
+/** @brief 退出菜单并返回音量页面，同时同步TIM2计数器。 */
 void Menu_Exit(void);
 
 /* 绘制当前菜单 */
+/** @brief 按当前状态和选中项目绘制一帧菜单画面。 */
 void Menu_Draw(void);
 
 /* 编码器处理 */
+/** @brief 根据编码器增量移动选中项目；正值向下，负值向上。 */
 void Menu_EncoderHandler(int32_t encoderDelta);
 
 /* 按键处理 */
+/** @brief 执行一次短按确认动作；长按逻辑在Menu_Process中完成。 */
 void Menu_ButtonHandler(void);
 
 /* 关机状态查询 */
+/** @brief 查询是否产生了待执行的关机请求。 */
 uint8_t Menu_IsPowerOffPending(void);
+/** @brief 清除已经被main.c取走的关机请求。 */
 void Menu_ClearPowerOffPending(void);
+/** @brief 查询当前是否正在显示长按关机进度。 */
 uint8_t Menu_IsInPowerOffMode(void);
 
 #endif /* __MENU_H */

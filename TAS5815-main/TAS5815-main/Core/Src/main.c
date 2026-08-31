@@ -70,6 +70,7 @@ static int32_t g_volume = 30; /* 默认音量30 */
 char volStr[4] = "99";
 
 /* 音量最大值 */
+/** @brief 应用层允许的最大音量等级。 */
 #define VOLUME_MAX  99
 
 /* 播放状态检测阈值：ADC值 > 1240 (约1V) 认为正在播放 */
@@ -86,16 +87,26 @@ char volStr[4] = "99";
 #define AUTO_POWER_OFF_MS_DEFAULT   (30 * 60 * 1000)
 #define AUTO_POWER_OFF_MS_10MIN      (10 * 60 * 1000)
 
+/** @brief 最近一次播放检测结果，1表示播放活动，0表示停止。 */
 static uint8_t g_lastPlayState = 0;
+/** @brief 当前调制模式编码，用于启动恢复和音量页显示。 */
 static uint8_t g_currentModulation = 0;
+/** @brief 当前FSW选择编码，用于启动恢复和音量页显示。 */
 static uint8_t g_currentFSW = 0;
+/** @brief 当前工作电压档位编码，STOP唤醒后据此恢复。 */
 static uint8_t g_currentVoltage = 1;
+/** @brief 最近一次检测到播放活动的HAL Tick时间戳。 */
 static uint32_t g_lastPlayTime = 0;
 
 /* 关机设置：0=10分钟, 1=30分钟, 2=随主机, 3=不自动关机 */
+/** @brief 自动关机策略，定义值见POWEROFF_MODE_*宏。 */
 uint8_t g_powerOffMode = POWEROFF_MODE_30MIN;
 static uint8_t g_pb0LastState = 0;
 
+/**
+ * @brief 设置自动关机策略。
+ * @param mode 0=无播放10分钟，1=无播放30分钟，2=跟随主机，3=禁用。
+ */
 void SetPowerOffMode(uint8_t mode)
 {
     g_powerOffMode = mode;
@@ -115,12 +126,21 @@ extern I2C_HandleTypeDef hi2c1;
 extern I2C_HandleTypeDef hi2c3; /* OLED和AT24C02使用I2C3 */
 
 /* 获取当前音量 */
+/**
+ * @brief 获取当前应用层音量。
+ * @return 范围为0~99的音量等级。
+ */
 int32_t GetVolume(void)
 {
     return g_volume;
 }
 
 /* 设置音量（同时更新硬件计数器） */
+/**
+ * @brief 设置音量软件值并同步TIM2编码器计数器。
+ * @param vol 目标音量等级，超出范围时被限制到0~99。
+ * @note TIM2原始计数与音量的关系为raw_counter = volume << 1。
+ */
 void SetVolume(int32_t vol)
 {
     if (vol < 0) vol = 0;
@@ -129,18 +149,31 @@ void SetVolume(int32_t vol)
     __HAL_TIM_SET_COUNTER(&htim2, (uint32_t)(vol << 1));
 }
 
+/**
+ * @brief 设置调制模式并保存到应用层运行时缓存。
+ * @param modulation TAS5815调制模式编码。
+ */
 void SetModulation(uint8_t modulation)
 {
     g_currentModulation = modulation;
     tas5815_set_modulation(modulation);
 }
 
+/**
+ * @brief 设置TAS5815功率级开关频率并保存运行时缓存。
+ * @param fsw FSW选择编码。
+ */
 void SetFSW(uint8_t fsw)
 {
     g_currentFSW = fsw;
     tas5815_set_fsw(fsw);
 }
 
+/**
+ * @brief 按档位组合驱动CH224K控制GPIO。
+ * @param voltage 0=5V，1=12V，2=高压档。
+ * @note 函数同时更新g_currentVoltage，调用者不应直接改写PD GPIO。
+ */
 void SetVoltage(uint8_t voltage)
 {
     g_currentVoltage = voltage;
@@ -160,11 +193,21 @@ void SetVoltage(uint8_t voltage)
     }
 }
 
+/**
+ * @brief 根据g_currentVoltage重新设置PD输出。
+ * @note STOP唤醒后系统时钟和外设恢复完成，再调用此函数恢复工作电压。
+ */
 void RestoreVoltage(void)
 {
     SetVoltage(g_currentVoltage);
 }
 
+/**
+ * @brief 使用ADC1软件触发读取一个通道。
+ * @param channel STM32 HAL定义的ADC通道号。
+ * @return 12位ADC转换结果，范围0~4095。
+ * @note 该函数动态切换ADC规则组通道，调用过程是阻塞式的。
+ */
 static uint32_t Read_ADC_Channel(uint32_t channel)
 {
     ADC_ChannelConfTypeDef sConfig = {0};
@@ -180,6 +223,11 @@ static uint32_t Read_ADC_Channel(uint32_t channel)
     return value;
 }
 
+/**
+ * @brief 执行关机准备、进入STOP，并在唤醒后恢复系统。
+ * @details 进入STOP前保存设置、切换低压、关闭蓝牙/功放/OLED并暂停Tick；
+ * PB9和PB0被配置为唤醒输入。STOP唤醒后需要重新配置系统时钟。
+ */
 void System_PowerOff(void)
 {
     if (g_volumeNeedSave) {
@@ -254,6 +302,11 @@ void System_PowerOff(void)
   * @brief  The application entry point.
   * @retval int
   */
+/**
+  * @brief 应用程序入口。
+  * @details 完成HAL、时钟、外设、显示、EEPROM、TAS5815和菜单初始化，随后进入主循环。
+  * @retval int 理论上不会返回；正常运行时一直停留在while(1)中。
+  */
 int main(void)
 {
 
@@ -277,7 +330,7 @@ int main(void)
 
   /* USER CODE END SysInit */
 
-  /* Initialize all configured peripherals */
+  /* 初始化CubeMX生成的外设；每个MX函数会进一步调用对应的HAL_MspInit配置底层资源。 */
   MX_GPIO_Init();
   MX_ADC1_Init();
   MX_I2C1_Init();
@@ -373,7 +426,7 @@ uint8_t savedModulation = 0;
     g_lastPlayTime = HAL_GetTick();
    /* USER CODE END 2 */
 
-  /* Infinite loop */
+  /* 主循环采用轮询架构：输入、显示、音量、播放检测和自动关机在此协作。 */
   /* USER CODE BEGIN WHILE */
 
   int32_t last_count = -1; /* 检测音量变化 */
@@ -585,6 +638,10 @@ void SystemClock_Config(void)
 /**
   * @brief  This function is executed in case of error occurrence.
   * @retval None
+  */
+/**
+  * @brief HAL初始化或时钟配置失败后的统一错误处理。
+  * @note 当前实现关闭全局中断并永久停机，便于调试器定位故障；产品版本可增加LED或串口故障码。
   */
 void Error_Handler(void)
 {

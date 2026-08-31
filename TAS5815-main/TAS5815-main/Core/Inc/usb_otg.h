@@ -32,12 +32,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief USB OTG FS设备控制器句柄；仅代表底层PCD。 */
 extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化USB OTG FS PCD、DM/DP引脚和USB中断。 */
 void MX_USB_OTG_FS_PCD_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +51,3 @@ void MX_USB_OTG_FS_PCD_Init(void);
 #endif
 
 #endif /* __USB_OTG_H__ */
-

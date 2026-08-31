@@ -27,6 +27,10 @@
 #include <stdlib.h>
 
 // OLED器件地址
+/**
+ * @brief SSD1306在HAL I2C接口中的设备地址。
+ * @note 7位地址为0x3C；当前驱动使用左移一位后的0x78。
+ */
 #define OLED_ADDRESS 0x78
 
 // OLED参数
@@ -35,6 +39,10 @@
 #define OLED_COLUMN 128        // OLED列数
 
 // 显存
+/**
+ * @brief OLED软件显存。
+ * @details 第一个下标是页，第二个下标是列；每个字节的8个位表示该列连续8个垂直像素。
+ */
 uint8_t OLED_GRAM[OLED_PAGE][OLED_COLUMN];
 
 // ========================== 底层通信函数 ==========================
@@ -48,6 +56,7 @@ uint8_t OLED_GRAM[OLED_PAGE][OLED_COLUMN];
  */
 void OLED_Send(uint8_t *data, uint8_t len)
 {
+  /* 第一个字节由调用者提供控制字节，后续字节是命令或显存数据。 */
   HAL_I2C_Master_Transmit(&hi2c3, OLED_ADDRESS, data, len, HAL_MAX_DELAY); // use I2C3 for OLED
 }
 
@@ -56,6 +65,7 @@ void OLED_Send(uint8_t *data, uint8_t len)
  */
 void OLED_SendCmd(uint8_t cmd)
 {
+  /* SSD1306命令帧格式为控制字节0x00加一个命令字节。 */
   static uint8_t sendBuffer[2] = {0};
   sendBuffer[1] = cmd;
   OLED_Send(sendBuffer, 2);
@@ -69,6 +79,7 @@ void OLED_SendCmd(uint8_t cmd)
  */
 void OLED_Init()
 {
+  /* 初始化采用页寻址模式，最后清空软件显存并打开显示输出。 */
   OLED_SendCmd(0xAE); /*关闭显示 display off*/
 
   OLED_SendCmd(0x20);
@@ -172,6 +183,7 @@ void OLED_NewFrame()
  */
 void OLED_ShowFrame()
 {
+  /* 每次刷新发送8页；每页先设置页地址和列地址，再发送128字节显存。 */
   static uint8_t sendBuffer[OLED_COLUMN + 1];
   sendBuffer[0] = 0x40;
   for (uint8_t i = 0; i < OLED_PAGE; i++)
@@ -192,6 +204,7 @@ void OLED_ShowFrame()
  */
 void OLED_SetPixel(uint8_t x, uint8_t y, OLED_ColorMode color)
 {
+  /* 先做边界保护，再把二维坐标换算为页下标和字节内位下标。 */
   if (x >= OLED_COLUMN || y >= OLED_ROW)
     return;
   if (!color)
@@ -313,6 +326,7 @@ void OLED_SetBits(uint8_t x, uint8_t y, uint8_t data, OLED_ColorMode color)
  */
 void OLED_SetBlock(uint8_t x, uint8_t y, const uint8_t *data, uint8_t w, uint8_t h, OLED_ColorMode color)
 {
+  /* 按字模的列数据逐位写入显存，支持跨页的任意高度图案。 */
   uint8_t fullRow = h / 8; // 完整的行数
   uint8_t partBit = h % 8; // 不完整的字节中的有效位数
   for (uint8_t i = 0; i < w; i++)
@@ -353,6 +367,7 @@ void OLED_SetBlock(uint8_t x, uint8_t y, const uint8_t *data, uint8_t w, uint8_t
  */
 void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, OLED_ColorMode color)
 {
+  /* 使用整数增量算法逐点绘制，避免浮点运算占用资源。 */
   static uint8_t temp = 0;
   if (x1 == x2)
   {
@@ -429,6 +444,7 @@ void OLED_DrawLine(uint8_t x1, uint8_t y1, uint8_t x2, uint8_t y2, OLED_ColorMod
  */
 void OLED_DrawRectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h, OLED_ColorMode color)
 {
+  /* 矩形由四条边组成，宽高参数表示覆盖的像素范围。 */
   OLED_DrawLine(x, y, x + w, y, color);
   OLED_DrawLine(x, y + h, x + w, y + h, color);
   OLED_DrawLine(x, y, x, y + h, color);
@@ -445,6 +461,7 @@ void OLED_DrawRectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h, OLED_ColorMo
  */
 void OLED_DrawFilledRectangle(uint8_t x, uint8_t y, uint8_t w, uint8_t h, OLED_ColorMode color)
 {
+  /* 填充矩形按水平扫描线绘制，最终仍通过像素操作修改软件显存。 */
   for (uint8_t i = 0; i < h; i++)
   {
     OLED_DrawLine(x, y + i, x + w, y + i, color);
@@ -682,6 +699,7 @@ void OLED_PrintASCIIString(uint8_t x, uint8_t y, char *str, const ASCIIFont *fon
  */
 uint8_t _OLED_GetUTF8Len(char *string)
 {
+  /* 根据UTF-8首字节判断当前字符占1~4个字节；非法前导字节返回0。 */
   if ((string[0] & 0x80) == 0x00)
   {
     return 1;
@@ -727,6 +745,7 @@ uint8_t _OLED_GetUTF8Len(char *string)
  */
 void OLED_PrintString(uint8_t x, uint8_t y, char *str, const Font *font, OLED_ColorMode color)
 {
+  /* 遍历字符串，先匹配UTF-8字模，匹配失败时回退到ASCII字模。 */
   uint16_t i = 0;                                       // 字符串索引
   uint8_t oneLen = (((font->h + 7) / 8) * font->w) + 4; // 一个字模占多少字节
   uint8_t found;                                        // 是否找到字模

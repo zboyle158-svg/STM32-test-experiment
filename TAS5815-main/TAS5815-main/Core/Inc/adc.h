@@ -32,12 +32,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief ADC1 HAL句柄，由adc.c定义，供main.c进行软件触发采样。 */
 extern ADC_HandleTypeDef hadc1;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化ADC1的时钟、分辨率、触发方式和默认规则组通道。 */
 void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +51,3 @@ void MX_ADC1_Init(void);
 #endif
 
 #endif /* __ADC_H__ */
-

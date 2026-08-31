@@ -46,6 +46,7 @@ extern "C" {
 /* USER CODE END EM */
 
 /* Exported functions prototypes ---------------------------------------------*/
+/** @brief Cortex-M异常和外设中断入口声明；具体实现位于stm32f4xx_it.c。 */
 void NMI_Handler(void);
 void HardFault_Handler(void);
 void MemManage_Handler(void);

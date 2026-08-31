@@ -62,6 +62,7 @@
   */
 void HAL_MspInit(void)
 {
+  /* HAL公共MSP初始化：打开SYSCFG/PWR时钟，为EXTI映射和低功耗控制提供基础。 */
 
   /* USER CODE BEGIN MspInit 0 */
 

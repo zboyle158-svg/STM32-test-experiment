@@ -32,15 +32,19 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief I2C1句柄，连接TAS5815。 */
 extern I2C_HandleTypeDef hi2c1;
 
+/** @brief I2C3句柄，共享连接OLED和AT24C02。 */
 extern I2C_HandleTypeDef hi2c3;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化I2C1及PB6/PB7复用引脚。 */
 void MX_I2C1_Init(void);
+/** @brief 初始化I2C3及PA8/PB8复用引脚。 */
 void MX_I2C3_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -52,4 +56,3 @@ void MX_I2C3_Init(void);
 #endif
 
 #endif /* __I2C_H__ */
-

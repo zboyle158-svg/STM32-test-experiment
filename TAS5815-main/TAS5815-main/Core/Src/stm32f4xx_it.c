@@ -54,6 +54,7 @@
 
 /* USER CODE END 0 */
 
+/* 外部句柄由对应外设文件定义，中断文件只负责把硬件入口转交给HAL。 */
 /* External variables --------------------------------------------------------*/
 extern PCD_HandleTypeDef hpcd_USB_OTG_FS;
 /* USER CODE BEGIN EV */
@@ -182,6 +183,7 @@ void PendSV_Handler(void)
   */
 void SysTick_Handler(void)
 {
+  /* SysTick是HAL时间基准；HAL_Delay和HAL_GetTick都依赖HAL_IncTick。 */
   /* USER CODE BEGIN SysTick_IRQn 0 */
 
   /* USER CODE END SysTick_IRQn 0 */
@@ -203,6 +205,7 @@ void SysTick_Handler(void)
   */
 void OTG_FS_IRQHandler(void)
 {
+  /* USB硬件中断交给HAL PCD状态机处理。 */
   /* USER CODE BEGIN OTG_FS_IRQn 0 */
 
   /* USER CODE END OTG_FS_IRQn 0 */
@@ -215,11 +218,13 @@ void OTG_FS_IRQHandler(void)
 /* USER CODE BEGIN 1 */
 void EXTI0_IRQHandler(void)
 {
+  /* PB0的EXTI0用于USB检测和STOP唤醒。 */
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_0);
 }
 
 void EXTI9_5_IRQHandler(void)
 {
+  /* PB9位于EXTI9_5共享入口，用于编码器按键唤醒。 */
     HAL_GPIO_EXTI_IRQHandler(GPIO_PIN_9);
 }
 

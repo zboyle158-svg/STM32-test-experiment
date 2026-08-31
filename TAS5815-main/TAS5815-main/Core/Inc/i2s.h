@@ -32,12 +32,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief I2S1句柄，底层使用SPI1外设承载数字音频时钟和数据。 */
 extern I2S_HandleTypeDef hi2s1;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化I2S1主机发送模式和48kHz音频接口参数。 */
 void MX_I2S1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +51,3 @@ void MX_I2S1_Init(void);
 #endif
 
 #endif /* __I2S_H__ */
-

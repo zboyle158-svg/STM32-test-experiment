@@ -36,12 +36,21 @@
 extern TIM_HandleTypeDef htim2;
 
 /* 菜单系统实例 */
+/**
+ * @brief 菜单模块唯一运行时实例。
+ * @note 该对象为静态存储，不使用堆内存；currentMenu始终指向本文件中的静态菜单数组。
+ */
 static MenuSystem menuSys;
 
 /* ========== 菜单项定义 ========== */
 
 /* 子菜单项定义 */
 /* 蓝牙设置功能函数 */
+/**
+ * @brief 执行QCC3034重新配对时序。
+ * @details 先关闭蓝牙模块，等待复位稳定后重新使能，再向PB13输出约1秒高电平配对脉冲。
+ * @note 函数包含HAL_Delay，只能在主循环或普通线程中调用，不能在ISR中调用。
+ */
 static void Bluetooth_Pair(void)
 {
     HAL_GPIO_WritePin(BT_EN_GPIO_Port, BT_EN_Pin, GPIO_PIN_RESET);
@@ -53,6 +62,7 @@ static void Bluetooth_Pair(void)
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_13, GPIO_PIN_RESET);
 }
 
+/** @brief 向QCC3034的上一曲控制输入输出约100ms高电平脉冲。 */
 static void Bluetooth_PrevTrack(void)
 {
     /* 上一曲：PB14输出0.1s高电平 */
@@ -61,6 +71,7 @@ static void Bluetooth_PrevTrack(void)
     HAL_GPIO_WritePin(GPIOB, GPIO_PIN_14, GPIO_PIN_RESET);
 }
 
+/** @brief 向QCC3034的下一曲控制输入输出约100ms高电平脉冲。 */
 static void Bluetooth_NextTrack(void)
 {
     /* 下一曲：PB12输出0.1s高电平 */
@@ -78,18 +89,21 @@ static MenuItem bluetoothMenu[] = {
 };
 
 /* 诱骗电压设置函数 */
+/** @brief 选择5V档，同时立即更新CH224K控制GPIO并保存设置。 */
 static void Voltage_Set5V(void)
 {
     SetVoltage(0);
     AT24C02_SaveVoltage(0);
 }
 
+/** @brief 选择12V档，同时立即更新CH224K控制GPIO并保存设置。 */
 static void Voltage_Set12V(void)
 {
     SetVoltage(1);
     AT24C02_SaveVoltage(1);
 }
 
+/** @brief 选择高压档，同时立即更新CH224K控制GPIO并保存设置。 */
 static void Voltage_Set20V(void)
 {
     SetVoltage(2);
@@ -185,8 +199,11 @@ static MenuItem mainMenu[] = {
 };
 
 /* ========== 内部函数声明 ========== */
+/** @brief 切换菜单状态、菜单数组和选中下标。 */
 static void Menu_SwitchTo(MenuState state, MenuItem *menu, uint8_t size);
+/** @brief 绘制最多三个可见菜单项，并显示滚动箭头和已保存圆点。 */
 static void Menu_DrawItemList(MenuItem *items, uint8_t size, uint8_t selected, MenuState menuState);
+/** @brief 执行菜单项动作，并根据项目描述进入子菜单或返回上级。 */
 static void Menu_ExecuteItem(MenuItem *item);
 
 /* ========== 菜单系统函数实现 ========== */
@@ -196,6 +213,7 @@ static void Menu_ExecuteItem(MenuItem *item);
  */
 void Menu_Init(void)
 {
+    /* 启动时从默认音量页面开始；具体参数由main.c在初始化阶段加载。 */
     menuSys.currentState = MENU_STATE_VOLUME;
     menuSys.currentMenu = mainMenu;
     menuSys.currentMenuSize = MAIN_MENU_SIZE;
@@ -219,6 +237,7 @@ MenuState Menu_GetState(void)
  */
 void Menu_Enter(void)
 {
+    /* 一级菜单从下标0开始，避免保留上一次浏览子菜单的选中位置。 */
     menuSys.currentState = MENU_STATE_MAIN;
     menuSys.currentMenu = mainMenu;
     menuSys.currentMenuSize = MAIN_MENU_SIZE;
@@ -231,6 +250,7 @@ void Menu_Enter(void)
  */
 void Menu_Exit(void)
 {
+    /* 返回音量页面前同步编码器计数，防止菜单期间的旋转被解释成音量变化。 */
     menuSys.currentState = MENU_STATE_VOLUME;
     menuSys.selectedIndex = 0;
     menuSys.inSubMenu = 0;
@@ -255,6 +275,7 @@ static void Menu_SwitchTo(MenuState state, MenuItem *menu, uint8_t size)
  */
 static void Menu_DrawItemList(MenuItem *items, uint8_t size, uint8_t selected, MenuState state)
 {
+    /* 当前屏幕只能显示三个项目；selected靠近底部时移动可见窗口。 */
     const uint8_t lineHeight = 16;
     const uint8_t startY = 16;
     const uint8_t maxVisibleItems = 3;
@@ -271,6 +292,7 @@ static void Menu_DrawItemList(MenuItem *items, uint8_t size, uint8_t selected, M
     uint8_t savedAMP = 5;
     uint8_t savedPowerOff = 1;
     
+    /* 圆点显示的是EEPROM中的已保存值，而不是仅存在RAM中的临时值。 */
     AT24C02_LoadVoltage(&savedVoltage);
     AT24C02_LoadModulation(&savedModulation);
     AT24C02_LoadFSW(&savedFSW);
@@ -348,6 +370,7 @@ static void Menu_DrawItemList(MenuItem *items, uint8_t size, uint8_t selected, M
  */
 static void Menu_ExecuteItem(MenuItem *item)
 {
+    /* action先改变硬件或保存参数；随后按subMenu描述切换菜单上下文。 */
     if (item->action != NULL) {
         item->action();
     }
@@ -387,6 +410,7 @@ static void Menu_ExecuteItem(MenuItem *item)
  */
 void Menu_Draw(void)
 {
+    /* 所有菜单页面遵循“清空显存、绘制标题和列表、整帧刷新”的流程。 */
     OLED_NewFrame();
     
     switch (menuSys.currentState) {
@@ -445,6 +469,7 @@ void Menu_Draw(void)
  */
 void Menu_EncoderHandler(int32_t encoderDelta)
 {
+    /* 音量页面的编码器由main.c解释，菜单模块只处理菜单页面的选择移动。 */
     if (menuSys.currentState == MENU_STATE_VOLUME) {
         return; /* 音量模式在main.c中处理 */
     }
@@ -467,6 +492,7 @@ void Menu_EncoderHandler(int32_t encoderDelta)
  */
 void Menu_ButtonHandler(void)
 {
+    /* 短按只负责确认当前项目，长按返回和关机在Menu_Process中根据持续时间判断。 */
     if (menuSys.currentState == MENU_STATE_VOLUME) {
         /* 音量状态按键进入菜单 */
         Menu_Enter();
@@ -478,6 +504,11 @@ void Menu_ButtonHandler(void)
     }
 }
 
+/**
+ * @brief 绘制长按关机进度条。
+ * @param elapsed 已经过的进度时间，单位ms。
+ * @param total 完成关机所需的总时间，单位ms。
+ */
 static void Menu_DrawPowerOffProgress(uint32_t elapsed, uint32_t total)
 {
     OLED_NewFrame();
@@ -501,6 +532,7 @@ static void Menu_DrawPowerOffProgress(uint32_t elapsed, uint32_t total)
 static uint8_t g_powerOffPending = 0;
 static uint8_t g_inPowerOffMode = 0;
 
+/** @brief 返回关机请求标志，供main.c在主循环中执行实际关机。 */
 uint8_t Menu_IsPowerOffPending(void)
 {
     return g_powerOffPending;
@@ -511,6 +543,7 @@ void Menu_ClearPowerOffPending(void)
     g_powerOffPending = 0;
 }
 
+/** @brief 返回是否正在显示长按关机进度。 */
 uint8_t Menu_IsInPowerOffMode(void)
 {
     return g_inPowerOffMode;
@@ -521,6 +554,7 @@ uint8_t Menu_IsInPowerOffMode(void)
  */
 void Menu_Process(void)
 {
+    /* 该函数每次主循环调用一次，使用前后状态差分识别旋转、按下和释放。 */
     static uint32_t lastEncoderCount = 0;
     static uint8_t lastButtonState = 1;
     static uint32_t buttonPressTime = 0;

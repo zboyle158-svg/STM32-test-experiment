@@ -24,12 +24,14 @@
 
 /* USER CODE END 0 */
 
+/** @brief USART2 HAL句柄；PA2/PA3可用于调试串口收发。 */
 UART_HandleTypeDef huart2;
 
 /* USART2 init function */
 
 void MX_USART2_UART_Init(void)
 {
+  /* 配置为115200、8数据位、无校验、1停止位的常用调试串口格式。 */
 
   /* USER CODE BEGIN USART2_Init 0 */
 
@@ -58,6 +60,7 @@ void MX_USART2_UART_Init(void)
 
 void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
 {
+  /* MSP层打开USART2和GPIOA时钟，并配置PA2/PA3的AF7复用。 */
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   if(uartHandle->Instance==USART2)

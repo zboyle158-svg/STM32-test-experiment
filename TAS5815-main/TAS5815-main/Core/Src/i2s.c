@@ -24,11 +24,13 @@
 
 /* USER CODE END 0 */
 
+/** @brief I2S1 HAL句柄；底层实例复用SPI1。 */
 I2S_HandleTypeDef hi2s1;
 
 /* I2S1 init function */
 void MX_I2S1_Init(void)
 {
+  /* 配置为主机发送、Philips标准、48kHz；这里只初始化外设，不发送音频缓冲。 */
 
   /* USER CODE BEGIN I2S1_Init 0 */
 
@@ -58,11 +60,13 @@ void MX_I2S1_Init(void)
 
 void HAL_I2S_MspInit(I2S_HandleTypeDef* i2sHandle)
 {
+  /* MSP层配置I2S专用PLLI2S时钟、SPI1时钟和三根音频引脚。 */
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   RCC_PeriphCLKInitTypeDef PeriphClkInitStruct = {0};
   if(i2sHandle->Instance==SPI1)
   {
+    /* I2S1音频引脚：PA5=CK，PA7=SD，PA15=WS。 */
   /* USER CODE BEGIN SPI1_MspInit 0 */
 
   /* USER CODE END SPI1_MspInit 0 */

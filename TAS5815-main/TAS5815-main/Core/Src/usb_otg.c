@@ -24,12 +24,14 @@
 
 /* USER CODE END 0 */
 
+/** @brief USB OTG FS设备控制器HAL句柄；PCD不等于USB音频协议栈。 */
 PCD_HandleTypeDef hpcd_USB_OTG_FS;
 
 /* USB_OTG_FS init function */
 
 void MX_USB_OTG_FS_PCD_Init(void)
 {
+  /* 仅初始化USB FS设备控制器、端点数量和内部PHY；当前工程未包含USB Audio Class层。 */
 
   /* USER CODE BEGIN USB_OTG_FS_Init 0 */
 
@@ -60,6 +62,7 @@ void MX_USB_OTG_FS_PCD_Init(void)
 
 void HAL_PCD_MspInit(PCD_HandleTypeDef* pcdHandle)
 {
+  /* MSP层配置USB DM/DP复用引脚、USB时钟和OTG_FS中断。 */
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   if(pcdHandle->Instance==USB_OTG_FS)

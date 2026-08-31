@@ -24,12 +24,15 @@
 
 /* USER CODE END 0 */
 
+/** @brief I2C1 HAL句柄，负责通过PB6/PB7访问TAS5815。 */
 I2C_HandleTypeDef hi2c1;
+/** @brief I2C3 HAL句柄，负责共享访问OLED和AT24C02。 */
 I2C_HandleTypeDef hi2c3;
 
 /* I2C1 init function */
 void MX_I2C1_Init(void)
 {
+  /* I2C1使用100kHz标准速率，设备地址由具体驱动在发送时提供。 */
 
   /* USER CODE BEGIN I2C1_Init 0 */
 
@@ -59,6 +62,7 @@ void MX_I2C1_Init(void)
 /* I2C3 init function */
 void MX_I2C3_Init(void)
 {
+  /* I2C3使用400kHz快速模式；OLED和EEPROM必须按顺序访问。 */
 
   /* USER CODE BEGIN I2C3_Init 0 */
 
@@ -88,10 +92,12 @@ void MX_I2C3_Init(void)
 
 void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
 {
+  /* MSP层负责打开I2C外设/GPIO时钟，并配置开漏复用引脚。 */
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   if(i2cHandle->Instance==I2C1)
   {
+    /* I2C1连接TAS5815：PB6为SCL，PB7为SDA。 */
   /* USER CODE BEGIN I2C1_MspInit 0 */
 
   /* USER CODE END I2C1_MspInit 0 */
@@ -116,6 +122,7 @@ void HAL_I2C_MspInit(I2C_HandleTypeDef* i2cHandle)
   }
   else if(i2cHandle->Instance==I2C3)
   {
+    /* I2C3为共享总线：PA8为SCL，PB8为SDA。 */
   /* USER CODE BEGIN I2C3_MspInit 0 */
 
   /* USER CODE END I2C3_MspInit 0 */

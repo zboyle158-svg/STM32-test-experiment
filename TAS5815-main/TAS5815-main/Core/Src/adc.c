@@ -24,11 +24,13 @@
 
 /* USER CODE END 0 */
 
+/** @brief ADC1 HAL句柄；主循环通过软件触发读取PA6和PB1。 */
 ADC_HandleTypeDef hadc1;
 
 /* ADC1 init function */
 void MX_ADC1_Init(void)
 {
+  /* ADC配置为单次、单通道、软件触发；具体通道可由main.c动态切换。 */
 
   /* USER CODE BEGIN ADC1_Init 0 */
 
@@ -76,10 +78,12 @@ void MX_ADC1_Init(void)
 
 void HAL_ADC_MspInit(ADC_HandleTypeDef* adcHandle)
 {
+  /* MSP层打开ADC1和GPIOA/GPIOB时钟，并把模拟输入配置到对应引脚。 */
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   if(adcHandle->Instance==ADC1)
   {
+    /* PA6=ADC1_IN6用于播放检测，PB1=ADC1_IN9用于电压检测。 */
   /* USER CODE BEGIN ADC1_MspInit 0 */
 
   /* USER CODE END ADC1_MspInit 0 */

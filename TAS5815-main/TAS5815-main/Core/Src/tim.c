@@ -24,11 +24,13 @@
 
 /* USER CODE END 0 */
 
+/** @brief TIM2 HAL句柄；硬件正交解码器保存编码器原始计数。 */
 TIM_HandleTypeDef htim2;
 
 /* TIM2 init function */
 void MX_TIM2_Init(void)
 {
+  /* TIM2工作在编码器接口模式，CPU无需通过GPIO中断逐边采样A/B相。 */
 
   /* USER CODE BEGIN TIM2_Init 0 */
 
@@ -73,10 +75,12 @@ void MX_TIM2_Init(void)
 
 void HAL_TIM_Encoder_MspInit(TIM_HandleTypeDef* tim_encoderHandle)
 {
+  /* MSP层打开TIM2和GPIOA时钟，并把PA0/PA1连接到TIM2输入通道。 */
 
   GPIO_InitTypeDef GPIO_InitStruct = {0};
   if(tim_encoderHandle->Instance==TIM2)
   {
+    /* PA0为编码器A相，PA1为编码器B相。 */
   /* USER CODE BEGIN TIM2_MspInit 0 */
 
   /* USER CODE END TIM2_MspInit 0 */

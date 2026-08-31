@@ -18,6 +18,10 @@
 #include <stdint.h>
 
 /* TAS5815 I2C Address - 7-bit address is 0x54 (ADR pin with 4.7k to DVDD) */
+/**
+ * @brief HAL使用的TAS5815设备地址。
+ * @details 芯片7位地址为0x54，STM32 HAL旧版主机接口要求左移一位，因此写地址为0xA8。
+ */
 #define TAS5815_ADDR        (0x54 << 1)  // 8-bit write address: 0xA8
 
 /* Register addresses */
@@ -33,12 +37,20 @@
 
 extern I2C_HandleTypeDef hi2c1; // I2C1 handle
 
-static uint8_t current_device_ctrl1 = 0x00;  /* Track current DEVICE_CTRL1 register value */
+/**
+ * @brief 软件缓存的DEVICE_CTRL1寄存器值。
+ * @note 修改调制或FSW时需要保留另一个字段，因此先基于缓存做掩码更新。
+ */
+static uint8_t current_device_ctrl1 = 0x00;
 
 /**
   * @brief  Millisecond delay function
   * @param  ms: delay in milliseconds
   * @retval None
+  */
+/**
+  * @brief 提供给TAS5815初始化时序使用的毫秒延时。
+  * @param ms 延时时间，单位为ms。
   */
 void delay_ms(uint32_t ms)
 {
@@ -50,6 +62,13 @@ void delay_ms(uint32_t ms)
   * @param  reg: Register address
   * @param  value: Value to write
   * @retval HAL status
+  */
+/**
+  * @brief 通过I2C1向TAS5815写入一个8位寄存器。
+  * @param reg TAS5815内部寄存器地址。
+  * @param value 要写入的寄存器数据。
+  * @return HAL传输状态；HAL_OK表示I2C事务完成。
+  * @details 总线上发送两个数据字节：寄存器地址和寄存器值。
   */
 static HAL_StatusTypeDef TAS5815_WriteReg(uint8_t reg, uint8_t value)
 {
@@ -70,6 +89,10 @@ static HAL_StatusTypeDef TAS5815_WriteReg(uint8_t reg, uint8_t value)
   *         6. Set volume
   *         7. Enter play mode
   * @retval None
+  */
+/**
+  * @brief 按“安全状态、接口配置、功率级配置、音量、Play”顺序初始化TAS5815。
+  * @note I2C传输失败时调用Error_Handler进入故障停机。
   */
 void tas5815_Initialize(void)
 {
@@ -154,6 +177,11 @@ void tas5815_Initialize(void)
   *         Register 0xFF = Mute
   * @retval None
   */
+/**
+  * @brief 将应用音量等级转换为TAS5815数字音量寄存器值。
+  * @param count 应用层音量等级；0表示静音，1~99为正常等级。
+  * @note count是逻辑单位，reg_val是芯片寄存器编码，两者不能直接等同。
+  */
 void set_tas5815_volume(uint32_t count)
 {
     uint8_t reg_val;
@@ -187,6 +215,7 @@ void set_tas5815_volume(uint32_t count)
   * @brief  Mute TAS5815 output
   * @retval None
   */
+/** @brief 设置DEVICE_CTRL2静音位，保持TAS5815处于Play状态。 */
 void tas5815_mute(void)
 {
     TAS5815_WriteReg(TAS5815_REG_DEVICE_CTRL2, 0x0B);  /* MUTE=1, PLAY mode */
@@ -196,6 +225,7 @@ void tas5815_mute(void)
   * @brief  Unmute TAS5815 output
   * @retval None
   */
+/** @brief 清除DEVICE_CTRL2静音位并恢复Play状态。 */
 void tas5815_unmute(void)
 {
     TAS5815_WriteReg(TAS5815_REG_DEVICE_CTRL2, 0x03);  /* MUTE=0, PLAY mode */
@@ -215,6 +245,10 @@ void tas5815_unmute(void)
   * @note   Analog gain range: 0dB to -15.5dB in 0.5dB steps
   *         Register AGAIN[4:0] = gain_dB * 2 (each step = 0.5dB)
   * @retval None
+  */
+/**
+  * @brief 根据增益索引查表并写入AGAIN寄存器。
+  * @param gain_index 增益表索引，范围0~7；非法值回退到索引5。
   */
 void tas5815_set_analog_gain(uint8_t gain_index)
 {
@@ -248,6 +282,11 @@ void tas5815_set_analog_gain(uint8_t gain_index)
   *         Hybrid mode requires special sequence: BD/1SPW -> Hi-Z -> Hybrid -> Play
   * @retval None
   */
+/**
+  * @brief 设置DEVICE_CTRL1低两位对应的调制模式。
+  * @param modulation 0=BD，1=1SPW，3=Hybrid。
+  * @note Hybrid模式需要经过普通调制和Hi-Z中间状态后再进入Play。
+  */
 void tas5815_set_modulation(uint8_t modulation)
 {
     uint8_t val = current_device_ctrl1 & ~0x03;
@@ -278,6 +317,10 @@ void tas5815_set_modulation(uint8_t modulation)
   *         384kHz -> 120kHz bandwidth, 768kHz/1.024MHz -> 175kHz bandwidth
   * @retval None
   */
+/**
+  * @brief 设置功率级开关频率并同步调整D类环路带宽。
+  * @param fsw_sel FSW字段编码，当前菜单使用0和1。
+  */
 void tas5815_set_fsw(uint8_t fsw_sel)
 {
     uint8_t val = current_device_ctrl1 & ~0x70;
@@ -294,11 +337,19 @@ void tas5815_set_fsw(uint8_t fsw_sel)
     current_device_ctrl1 = val;
 }
 
+/**
+  * @brief 让TAS5815退出正常播放状态。
+  * @note 该函数只操作功放寄存器，不负责关闭外部电源。
+  */
 void tas5815_sleep(void)
 {
     TAS5815_WriteReg(TAS5815_REG_DEVICE_CTRL2, 0x00);
 }
 
+/**
+  * @brief 按“唤醒准备、等待、Play”时序恢复TAS5815。
+  * @note 调用前应先恢复功放供电和I2C1外设。
+  */
 void tas5815_wakeup(void)
 {
     TAS5815_WriteReg(TAS5815_REG_DEVICE_CTRL2, 0x02);

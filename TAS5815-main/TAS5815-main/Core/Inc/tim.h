@@ -32,12 +32,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief TIM2句柄，工作在编码器接口模式并保存原始计数。 */
 extern TIM_HandleTypeDef htim2;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化TIM2编码器模式和PA0/PA1输入复用。 */
 void MX_TIM2_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +51,3 @@ void MX_TIM2_Init(void);
 #endif
 
 #endif /* __TIM_H__ */
-

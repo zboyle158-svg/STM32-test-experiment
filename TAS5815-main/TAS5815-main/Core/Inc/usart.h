@@ -32,12 +32,14 @@ extern "C" {
 
 /* USER CODE END Includes */
 
+/** @brief USART2句柄，连接PA2 TX和PA3 RX调试串口。 */
 extern UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
+/** @brief 初始化USART2为115200-8-N-1收发模式。 */
 void MX_USART2_UART_Init(void);
 
 /* USER CODE BEGIN Prototypes */
@@ -49,4 +51,3 @@ void MX_USART2_UART_Init(void);
 #endif
 
 #endif /* __USART_H__ */
-
