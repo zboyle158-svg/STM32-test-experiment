@@ -1,4 +1,5 @@
 /* USER CODE BEGIN Header */
+/** @file tas5815.c @brief TAS5815 Class-D amplifier I2C1 driver. */
 /**
   ******************************************************************************
   * @file    tas5815.c

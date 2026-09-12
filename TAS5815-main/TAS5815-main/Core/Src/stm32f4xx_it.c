@@ -1,4 +1,5 @@
 /* USER CODE BEGIN Header */
+/** @details Cortex-M4中断入口。SysTick提供HAL毫秒节拍，EXTI处理PB9按键和PB0 USB检测；中断中只做快速事件确认。 */
 /**
   ******************************************************************************
   * @file    stm32f4xx_it.c

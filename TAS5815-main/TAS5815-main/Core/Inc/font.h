@@ -1,3 +1,9 @@
+/**
+ * @file font.h
+ * @brief OLED字体、图像和字模元数据声明。
+ * @details font.c提供只读点阵数组；oled.c根据本文件中的宽高和数据指针绘制ASCII及UTF-8字符。
+ * @par 使用方法 直接将Font/ASCIIFont对象地址传给OLED_PrintString或OLED_PrintASCIIString。
+ */
 #ifndef __FONT_H
 #define __FONT_H
 #include "stdint.h"

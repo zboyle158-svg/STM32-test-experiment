@@ -1,3 +1,9 @@
+/**
+ * @file oled.h
+ * @brief SSD1306 128x64 OLED绘图接口。
+ * @details 驱动使用I2C3和RAM帧缓存；先调用OLED_NewFrame()，再绘图，最后调用OLED_ShowFrame()发送整帧。
+ * @par 注意事项 OLED与AT24C02共享I2C3，显示刷新必须与EEPROM访问串行执行。
+ */
 #ifndef __OLED_H__
 #define __OLED_H__
 

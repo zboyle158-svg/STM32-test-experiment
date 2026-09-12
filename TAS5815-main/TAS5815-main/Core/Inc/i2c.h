@@ -1,4 +1,5 @@
 /* USER CODE BEGIN Header */
+/** @details 声明hi2c1与hi2c3句柄。设备驱动通过这些句柄调用HAL_I2C_Mem/Transmit/Receive接口。 */
 /**
   ******************************************************************************
   * @file    i2c.h

@@ -1,4 +1,5 @@
 /* USER CODE BEGIN Header */
+/** @file menu.c @brief Hierarchical encoder/button user-interface state machine. */
 /**
   ******************************************************************************
   * @file    menu.c

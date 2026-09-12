@@ -1,4 +1,5 @@
 /* USER CODE BEGIN Header */
+/** @file at24c02.c @brief AT24C02 persistent-settings driver on shared I2C3. */
 /**
   ******************************************************************************
   * @file    at24c02.c
